@@ -1,14 +1,314 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Synth Studio</title>
-    <meta name="description" content="Browser DAW: keyboard, samplers, step sequencer, live recorder, and free sample browser." />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Synth Studio — every instrument, one tab.</title>
+<meta name="description" content="Browser-based polyphonic synthesizer with a computer-keyboard piano, dynamic range expansion, custom mapping, and full ADSR control." />
+
+<!-- Open Graph / social preview -->
+<meta property="og:title" content="Synth Studio — every instrument, one tab." />
+<meta property="og:description" content="Browser-based polyphonic synthesizer with a computer-keyboard piano, dynamic range expansion, custom mapping, and full ADSR control." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://beatle099.github.io/synth-studio/" />
+
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+<!-- Fonts: Fraunces for display, Inter Tight for body, JetBrains Mono for code/labels -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0e0a08;
+    --bg-2: #161110;
+    --ink: #f3ede6;
+    --ink-dim: #a8a09a;
+    --ink-mute: #6b645f;
+    --line: #2a2421;
+    --accent: #ff6a3d;
+    --accent-soft: #ffb38a;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Inter Tight", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse at 50% 30%, black 0%, transparent 70%);
+    opacity: .35;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: "";
+    position: fixed; top: -20%; left: -10%; width: 80%; height: 80%;
+    background: radial-gradient(closest-side, rgba(255,106,61,.18), transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; position: relative; z-index: 1; }
+
+  nav {
+    display: flex; align-items: center; gap: 14px;
+    padding: 22px 28px;
+    max-width: 1080px; margin: 0 auto;
+    position: relative; z-index: 2;
+  }
+  .logo {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: var(--accent);
+    display: grid; place-items: center;
+    color: #1a0d05; font-weight: 900;
+    font-family: "JetBrains Mono", monospace;
+    box-shadow: 0 6px 20px rgba(255,106,61,.35);
+  }
+  nav .name { font-family: "JetBrains Mono", monospace; font-weight: 500; letter-spacing: .02em; }
+  nav .tagline { color: var(--ink-mute); font-family: "JetBrains Mono", monospace; font-size: 14px; }
+  nav .spacer { flex: 1; }
+  nav a.ghlink {
+    color: var(--ink-dim); text-decoration: none; font-size: 14px;
+    padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px;
+    transition: .2s;
+  }
+  nav a.ghlink:hover { color: var(--ink); border-color: var(--accent); }
+
+  header.hero { padding: 80px 0 60px; position: relative; z-index: 1; }
+  h1 {
+    font-family: "Fraunces", serif;
+    font-weight: 900;
+    font-size: clamp(48px, 8vw, 96px);
+    line-height: 1.0;
+    letter-spacing: -0.03em;
+    margin: 0 0 8px;
+  }
+  h1 .accent { color: var(--accent); }
+  .lede {
+    font-size: clamp(16px, 1.6vw, 19px);
+    color: var(--ink-dim);
+    max-width: 620px;
+    margin: 28px 0 36px;
+  }
+  .version {
+    font-family: "JetBrains Mono", monospace;
+    color: var(--ink-mute);
+    font-size: 14px;
+    margin-bottom: 14px;
+  }
+  .version b { color: var(--ink); background: var(--bg-2); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); }
+
+  .downloads { display: flex; gap: 14px; flex-wrap: wrap; }
+  .dl {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    text-decoration: none; color: var(--ink);
+    min-width: 220px;
+    transition: .2s;
+  }
+  .dl:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .dl.primary { background: var(--accent); border-color: var(--accent); color: #1a0d05; }
+  .dl.primary:hover { background: #ff7a52; border-color: #ff7a52; color: #1a0d05; }
+  .dl.primary .label { color: rgba(26,13,5,.7); }
+  .dl.primary .meta { color: rgba(26,13,5,.7); }
+  .dl .ico { font-size: 22px; width: 28px; text-align: center; }
+  .dl .label { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--ink-mute); display: block; }
+  .dl .platform { font-size: 17px; font-weight: 600; }
+  .dl .meta { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--ink-mute); margin-top: 2px; }
+  .other { color: var(--ink-mute); font-size: 13px; margin-top: 18px; }
+  .other a { color: var(--accent-soft); }
+  .other code {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12px;
+    color: var(--ink);
+  }
+
+  section.shot { padding: 60px 0 100px; }
+  .window {
+    border-radius: 14px;
+    background: linear-gradient(180deg, #1a1411, #120d0b);
+    border: 1px solid var(--line);
+    box-shadow: 0 30px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,106,61,.05);
+    overflow: hidden;
+  }
+  .titlebar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px;
+    background: #0f0b09;
+    border-bottom: 1px solid var(--line);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px; color: var(--ink-dim);
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: #2a2421; }
+  .dot:nth-child(1) { background: #ff5f56; }
+  .dot:nth-child(2) { background: #ffbd2e; }
+  .dot:nth-child(3) { background: #27c93f; }
+  .titlebar .title { margin-left: 12px; }
+  .body-pad { padding: 28px; min-height: 260px; color: var(--ink-mute); font-family: "JetBrains Mono", monospace; font-size: 14px; }
+  .body-pad em { color: var(--accent-soft); font-style: normal; }
+
+  .features {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px; margin-top: 28px;
+  }
+  .feat { padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: rgba(22,17,16,.5); }
+  .feat h3 { font-family: "Fraunces", serif; font-weight: 700; font-size: 22px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .feat p { color: var(--ink-dim); font-size: 14px; margin: 0; }
+
+  /* keyboard cheat sheet */
+  .cheat {
+    margin-top: 36px;
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(22,17,16,.5);
+  }
+  .cheat h3 { font-family: "Fraunces", serif; font-weight: 700; font-size: 22px; margin: 0 0 14px; }
+  .cheat pre {
+    margin: 0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--ink-dim);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .cheat pre b { color: var(--accent); font-weight: 500; }
+
+  footer { padding: 40px 0 60px; border-top: 1px solid var(--line); margin-top: 40px; color: var(--ink-mute); font-size: 13px; }
+  footer a { color: var(--ink-dim); text-decoration: none; }
+  footer a:hover { color: var(--accent); }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  h1, .lede, .version, .downloads, .other { animation: rise .7s ease both; }
+  .lede { animation-delay: .1s; }
+  .version { animation-delay: .2s; }
+  .downloads { animation-delay: .3s; }
+  .other { animation-delay: .4s; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">S</div>
+  <div>
+    <div class="name">Synth Studio</div>
+  </div>
+  <div class="tagline">— browser polyphonic synthesizer</div>
+  <div class="spacer"></div>
+  <a class="ghlink" href="https://github.com/beatle099/synth-studio" target="_blank" rel="noopener">GitHub →</a>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>Every key.<br><span class="accent">One tab.</span></h1>
+    <p class="lede">
+      A polyphonic synthesizer that runs entirely in your browser. Play with your computer keyboard or click the on-screen piano. Range expands from one octave to the full 88-key concert grand. Mappings are remappable and stick around between sessions.
+    </p>
+
+    <div class="version">Latest version: <b>0.2.0</b> · keyboard range expansion</div>
+
+    <div class="downloads">
+      <a class="dl primary" href="./app/">
+        <div class="ico">▶</div>
+        <div>
+          <span class="label">Launch</span>
+          <div class="platform">Open the synth</div>
+          <div class="meta">no install · click anywhere to enable audio</div>
+        </div>
+      </a>
+      <a class="dl" href="https://github.com/beatle099/synth-studio" target="_blank" rel="noopener">
+        <div class="ico">⌥</div>
+        <div>
+          <span class="label">View on</span>
+          <div class="platform">GitHub</div>
+          <div class="meta">source · issues · releases</div>
+        </div>
+      </a>
+      <a class="dl" href="https://github.com/beatle099/synth-studio/blob/main/USER_GUIDE.md" target="_blank" rel="noopener">
+        <div class="ico">📖</div>
+        <div>
+          <span class="label">Read the</span>
+          <div class="platform">User guide</div>
+          <div class="meta">key mappings · ADSR · custom layouts</div>
+        </div>
+      </a>
+    </div>
+    <p class="other">Want to self-host? Clone, <code>npm install</code>, <code>npm run dev</code>. Full docs in the <a href="https://github.com/beatle099/synth-studio">repo</a>.</p>
+  </div>
+</header>
+
+<section class="shot">
+  <div class="wrap">
+    <div class="window">
+      <div class="titlebar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="title">synth-studio — keyboard + range</span>
+      </div>
+      <div class="body-pad">
+        <em>// drop a screenshot or animated GIF of the app here</em><br>
+        Replace this block with an &lt;img src="./screenshot.png" /&gt; once you have one. A short looping GIF of the keyboard playing a melody is the highest-impact thing you can put on this page.
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feat">
+        <h3>Polyphonic keyboard</h3>
+        <p>Every key is its own voice. Hold ten at once. Sine, square, sawtooth, triangle.</p>
+      </div>
+      <div class="feat">
+        <h3>Full ADSR</h3>
+        <p>Attack, decay, sustain, release. Sweep through pads, plucks, organs, leads.</p>
+      </div>
+      <div class="feat">
+        <h3>Range expansion</h3>
+        <p>1 octave through the full 88-key piano. Compact / fit / scrollable / full views.</p>
+      </div>
+      <div class="feat">
+        <h3>Custom mapping</h3>
+        <p>Click a piano key, press a computer key — it's bound. Saves to your browser.</p>
+      </div>
+    </div>
+
+    <div class="cheat">
+      <h3>Default keyboard layout</h3>
+<pre>
+ <b>C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 F5</b>
+  A  S  D  F  G  H  J  K  L  ;  '   ← white keys
+  W  E    T  Y  U     O  P          ← black keys
+
+  <b>Z</b> = octave −     <b>X</b> = octave +
+</pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Built by <a href="https://github.com/beatle099">@beatle099</a> with assistance from Claude · MIT License · <a href="https://github.com/beatle099/synth-studio/issues">Report an issue</a>
+  </div>
+</footer>
+
+</body>
 </html>
