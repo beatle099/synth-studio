@@ -154,6 +154,47 @@ table.grid { border-collapse: separate; border-spacing: 3px; }
 .cell.cursor { box-shadow: inset 0 0 0 2px var(--cell-cursor); }
 .grid-divider { padding: 4px 0; }
 
+/* Mixer */
+.mixer-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.channel {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  min-height: 200px;
+  position: relative;
+}
+.channel.solo { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.channel.mute { opacity: 0.55; }
+.channel-name {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.4px;
+  text-transform: uppercase; color: var(--text);
+}
+.channel-knob { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
+.channel-knob input[type="range"] { width: 100%; }
+.fader {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 100%; min-height: 90px; justify-content: flex-end;
+}
+.fader-input {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 24px;
+  height: 110px;
+  background: transparent;
+}
+.fader-readout { font-variant-numeric: tabular-nums; }
+
+.btn.toggle { font-family: ui-monospace, monospace; min-width: 26px; }
+
 /* Sample browser */
 .settings { background: var(--panel-2); border-radius: 8px; padding: 8px 12px; }
 .settings summary { cursor: pointer; }

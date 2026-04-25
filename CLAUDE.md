@@ -14,13 +14,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The app is a single-page React/Vite client with no backend. All audio runs in-browser via Tone.js on top of the Web Audio API. Three concerns dominate the design:
 
-### 1. The audio engine is a singleton
+### 1. The audio engine is a singleton with per-channel routing
 
-`src/audio/engine.ts` exports a single `engine` instance. It owns every audio node — the master `Gain`, a default `PolySynth`, a `Map<InstrumentId, Tone.Sampler>` for loaded samples, and a fixed bank of drum synths (`MembraneSynth`, `NoiseSynth`, `MetalSynth`). Components never instantiate Tone nodes themselves; they call methods on `engine`. This keeps voices stable across re-renders and lets the recorder / sequencer / keyboard share the same instrument state.
+`src/audio/engine.ts` exports a single `engine` instance. It owns every audio node and routes them through five `Tone.Channel` strips (synth, guitar, bass, vocal, drums) into a single master `Gain` connected to the destination. Each pitched instrument has its own default `Tone.PolySynth` connected to its channel; samplers, when loaded via `loadSamples`, connect to the same channel and replace the default for that instrument. Drum synths all share the drums channel.
+
+Why per-instrument synths: the mixer's volume/pan/mute/solo work even before the user loads any samples. If we had a single shared PolySynth, switching instruments would not change which channel was attenuated.
+
+Components never instantiate Tone nodes themselves; they call methods on `engine`. This keeps voices stable across re-renders and lets the recorder / sequencer / keyboard share the same instrument state.
 
 `engine.start()` must be awaited before any sound — it calls `Tone.start()` to unlock the audio context after a user gesture. `App.tsx` does this lazily on the first attack/drum hit.
 
-`pitchedVoice(instrument)` is the one place that decides "is there a loaded sampler for this instrument? if yes use it, otherwise fall back to the default synth." All trigger methods route through this so the rest of the codebase doesn't have to know whether a sample is loaded.
+`pitchedVoice(instrument)` is the one place that decides "is there a loaded sampler for this instrument? if yes use it, otherwise fall back to that instrument's default synth." All trigger methods route through this so the rest of the codebase doesn't have to know whether a sample is loaded.
+
+### 1a. Mixer state lives in React, audio state lives in the engine
+
+The Mixer component (`components/Mixer.tsx`) keeps `ChannelState` in React local state for fader positions, then mirrors every change into the engine via `setChannelVolume / setChannelPan / setChannelMute / setChannelSolo`. The engine never reads back from React state. If you need to expose channel state to another component, lift the state up — don't add a getter on the engine.
+
+Solo behavior comes from `Tone.Channel.solo`: when *any* channel has `solo = true`, all non-solo channels are muted at the audio graph level. The UI doesn't compute this — it just toggles per channel.
 
 ### 2. Two playback paths share the engine
 
@@ -36,6 +46,10 @@ The recorder captures the `instrument` at each event so playback restores the ti
 The `InstrumentId` type includes `'drums'` for completeness, but `engine.triggerAttack/Release/Note` are no-ops when the current instrument is `'drums'`. Drums are always reachable via `engine.triggerDrum(hit)` independent of the current pitched instrument. The UI reflects this: `InstrumentPanel` only lists pitched options; `DrumPad` renders the 5 drum cells with their own keybindings (`1`–`5`).
 
 When wiring a new feature that produces sound, decide first whether it is pitched (goes through `triggerAttack/triggerNote*`) or percussive (goes through `triggerDrum`). Don't try to unify them.
+
+### 4. The Sequencer card has a collapse toggle
+
+`Sequencer.tsx` keeps an `expanded` flag in local state. The grid is conditionally rendered, but the header (BPM / instrument selector / play / clear) is always visible so users can still drive playback while the score is hidden. Don't hoist `expanded` into App unless another component needs to read it — keeping it local prevents unnecessary App re-renders during play.
 
 ## Freesound integration notes
 

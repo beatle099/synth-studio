@@ -21,6 +21,7 @@ export function Sequencer({ pitchInstrument, setPitchInstrument, bpm, setBpm }: 
   const [drumGrid, setDrumGrid] = useState<boolean[][]>(() => emptyGrid(DRUM_HITS.length));
   const [playing, setPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
+  const [expanded, setExpanded] = useState(true);
 
   const pitchGridRef = useRef(pitchGrid);
   const drumGridRef = useRef(drumGrid);
@@ -90,7 +91,17 @@ export function Sequencer({ pitchInstrument, setPitchInstrument, bpm, setBpm }: 
   return (
     <section className="card">
       <header className="card-header">
-        <h2>Score · Step Sequencer</h2>
+        <div className="row gap">
+          <button
+            className="btn small toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+            title={expanded ? 'Hide score builder' : 'Show score builder'}
+          >
+            {expanded ? '▾' : '▸'}
+          </button>
+          <h2>Score · Step Sequencer</h2>
+        </div>
         <div className="row gap">
           <label className="row gap small">
             BPM
@@ -119,7 +130,7 @@ export function Sequencer({ pitchInstrument, setPitchInstrument, bpm, setBpm }: 
         </div>
       </header>
 
-      <div className="grid-wrap">
+      {expanded && <div className="grid-wrap">
         <table className="grid">
           <tbody>
             {SEQ_PITCHES.map((note, rowIdx) => (
@@ -145,7 +156,7 @@ export function Sequencer({ pitchInstrument, setPitchInstrument, bpm, setBpm }: 
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
     </section>
   );
 }

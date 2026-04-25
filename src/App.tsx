@@ -7,6 +7,7 @@ import { DrumPad } from './components/DrumPad';
 import { Sequencer } from './components/Sequencer';
 import { RecorderPanel } from './components/RecorderPanel';
 import { SampleBrowser } from './components/SampleBrowser';
+import { Mixer } from './components/Mixer';
 import './styles.css';
 
 export default function App() {
@@ -55,6 +56,7 @@ export default function App() {
         />
         <DrumPad onHit={onDrum} />
         <RecorderPanel recorder={recorder} />
+        <Mixer />
         <Sequencer
           pitchInstrument={instrument === 'drums' ? 'synth' : instrument}
           setPitchInstrument={setInstrument}

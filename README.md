@@ -10,6 +10,8 @@ A browser-only mini-DAW: play a synth/guitar/bass/vocal sampler with your comput
 - **Step sequencer (Score A)** — 16-step piano-roll grid for one pitched track and one drum track, runs through `Tone.Sequence` at adjustable BPM.
 - **Live recorder (Score C)** — record-as-you-play capture of every attack/release/drum hit with millisecond timestamps, then play back with the original instrument selection.
 - **Freesound browser** — search free CC-licensed samples by instrument, preview in-browser, and load directly into the active sampler slot. You provide your own API token.
+- **5-channel mixer** — per-instrument volume (dB fader), pan, mute, and solo. Built on `Tone.Channel` strips so solo is sample-accurate.
+- **Collapsible score builder** — the sequencer card has a toggle that hides the grid when you want focus on the keyboard or mixer; playback controls remain accessible.
 
 ## Run locally
 
