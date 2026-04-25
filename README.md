@@ -4,17 +4,31 @@ A browser-only polyphonic synthesizer. Play with your computer keyboard or click
 
 ## Features
 
-- **Two-octave piano keyboard** (C4–B5) with visually distinct white and black keys.
-- **Computer-keyboard mapping** — every key labelled on the corresponding piano key.
-  - Lower octave: `A W S E D F T G Y H U J` → C4 through B4
-  - Upper octave: `K O L P ; '` → C5 through F5
-  - `Z` / `X` shift the global octave down / up
-- **Polyphonic playback** — multiple keys held = chord; releasing one key only stops that note.
-- **No retrigger on key repeat** — held keys won't re-strike.
-- **Web Audio synth voice** with selectable waveform (sine / square / sawtooth / triangle).
-- **ADSR envelope** — independent attack, decay, sustain, release sliders.
-- **Master volume** and **panic / clear** to instantly stop every voice.
-- **Live visual feedback** — held keys highlight on the piano, active note ids appear as chips.
+### Keyboard
+- **Selectable range:** 1, 2, 3, 4 octaves, or full 88-key piano (A0–C8). Default 2-octave C4–B5.
+- **Dynamic key generation** — keys are computed from the active range, never hardcoded.
+- **Octave shift** transposes computer-key bindings up to ±3 octaves without changing the visible range.
+- **Mini keyboard navigator** shows the full 88-key range; click anywhere to jump the visible window.
+- **View modes:** compact, fit-to-screen, scrollable, full (wide with octave guides).
+- **Label modes:** note + key, note only, key only, off.
+
+### Computer-keyboard mapping modes
+- **Simple** (default, no conflicts): `A W S E D F T G Y H U J` = C4–B4 · `K O L P ; '` = C5–F5 · `Z` / `X` = octave −/+
+- **Extended** (3 rows, no conflicts): adds lower row `Z 2 X 3 C V 5 B 6 N 7 M` = C3–B3 (sharps on the number row), keeps `A W S E … '` for C4–F5. Octave shift moves to `[` / `]` because Z and X become note keys.
+- **Custom** — open the Keyboard Mapping panel, click a piano key, press a computer key. Saved to `localStorage` and survives reload. Reset / clear-all supported. Duplicate-key bindings warn but don't break (first match wins).
+
+### Synth voice (Web Audio API)
+- Polyphonic — a fresh `OscillatorNode` per note, no max-voices cap.
+- Waveform selector: sine / square / sawtooth / triangle. Live changes are heard on held notes.
+- ADSR envelope: independent attack, decay, sustain, release.
+- Master volume.
+- **Panic** instantly fades and tears down every voice.
+- AudioContext is constructed lazily on the first user gesture (no autoplay-policy errors).
+
+### Visual feedback
+- Held notes highlight on the piano and appear as chips in the Active Notes panel.
+- Active notes also show on the mini-keyboard navigator.
+- Octave shift, visible range, and currently-awaiting custom binding are always visible.
 
 ## Run locally
 
@@ -23,7 +37,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. The audio context is created on the first key press / click to comply with the browser autoplay policy.
+Open `http://localhost:5173`. The audio context starts on the first key press / click.
 
 ## Build & lint
 
@@ -37,18 +51,31 @@ npm run preview   # serve dist/ locally
 
 ```
 src/
-  App.tsx                  global state, key handlers, panic, octave shift
+  App.tsx                       global state, key handlers, persistence
   main.tsx
   styles.css
   audio/
-    synthEngine.ts         Web Audio API synth: oscillator + ADSR + polyphony
+    synthEngine.ts              Web Audio synth: oscillator + ADSR + polyphony
   data/
-    keyboardMap.ts         computer-key → note table; octave-shift helpers
+    types.ts                    KeyboardRange / ViewMode / MappingMode / KeyMapping / LabelMode
+    keyboardMap.ts              MIDI helpers, range presets, simple+extended maps, custom-map storage
+    preferences.ts              localStorage helpers for keyboard prefs
   components/
-    PianoKeyboard.tsx      on-screen piano with key labels and highlighting
-    SynthControls.tsx      waveform / volume / ADSR / octave / panic
-    ActiveNotes.tsx        live chip list of currently sounding notes
+    PianoKeyboard.tsx           dynamic piano renderer, view-mode aware
+    KeyboardControlBar.tsx      range / view / labels / mapping mode / octave shift
+    MiniKeyboard.tsx            full 88-key overview with click-to-jump
+    KeyMappingSettings.tsx      custom mapping panel with click-and-press capture
+    SynthControls.tsx           waveform / volume / ADSR / octave / panic
+    ActiveNotes.tsx             live chip list of currently sounding notes
 ```
+
+## Persistence
+
+Everything below is kept in `localStorage`:
+- Range, view mode, mapping mode, label mode, octave shift — under `synth-studio.preferences`
+- Custom key map — under `synth-studio.custom-keymap`
+
+Clear browser storage to reset to defaults.
 
 ## Tech
 

@@ -9,7 +9,9 @@ interface Props {
   setADSR: (patch: Partial<ADSR>) => void;
   octaveShift: number;
   setOctaveShift: (n: number) => void;
+  shiftKeys: { down: string; up: string };
   onPanic: () => void;
+  onShiftRangeOctave: (delta: number) => void;
 }
 
 const WAVEFORMS: Waveform[] = ['sine', 'square', 'sawtooth', 'triangle'];
@@ -23,7 +25,9 @@ export function SynthControls({
   setADSR,
   octaveShift,
   setOctaveShift,
+  shiftKeys,
   onPanic,
+  onShiftRangeOctave,
 }: Props) {
   return (
     <section className="controls" aria-label="Synth controls">
@@ -86,12 +90,17 @@ export function SynthControls({
         </label>
         <div className="row gap">
           <button type="button" className="btn" onClick={() => setOctaveShift(Math.max(-3, octaveShift - 1))}>
-            Z · −
+            {shiftKeys.down.toUpperCase()} · −
           </button>
           <button type="button" className="btn" onClick={() => setOctaveShift(0)}>Reset</button>
           <button type="button" className="btn" onClick={() => setOctaveShift(Math.min(3, octaveShift + 1))}>
-            X · +
+            {shiftKeys.up.toUpperCase()} · +
           </button>
+        </div>
+        <div className="row gap small muted">
+          Shift visible range:
+          <button type="button" className="btn small ghost" onClick={() => onShiftRangeOctave(-1)}>− oct view</button>
+          <button type="button" className="btn small ghost" onClick={() => onShiftRangeOctave(1)}>+ oct view</button>
         </div>
       </div>
 

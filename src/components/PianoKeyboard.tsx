@@ -1,66 +1,137 @@
-import { PIANO_RANGE, isBlack, labelForPianoNote } from '../data/keyboardMap';
+import { forwardRef, useMemo } from 'react';
+import {
+  isBlack,
+  labelForNote,
+  rangeNotes,
+} from '../data/keyboardMap';
+import type {
+  KeyMapping,
+  KeyboardRange,
+  KeyboardViewMode,
+  LabelMode,
+} from '../data/types';
 
 interface PianoKeyboardProps {
-  /** Set of currently sounding note ids (e.g. "C4", "F#5"). */
-  activeNotes: ReadonlySet<string>;
-  /** Current global octave shift; used to display the matching key label. */
+  range: KeyboardRange;
+  viewMode: KeyboardViewMode;
+  labelMode: LabelMode;
+  mappings: KeyMapping[];
   octaveShift: number;
-  /** Mouse press = note on. */
+  activeNotes: ReadonlySet<string>;
+  /** When true, clicking a key invokes onPianoKeyClick instead of onAttack/onRelease. */
+  editMode?: boolean;
+  /** Note id awaiting a key assignment in edit mode (highlights the target). */
+  awaitingNote?: string | null;
   onAttack: (noteId: string) => void;
-  /** Mouse release / leave = note off. */
   onRelease: (noteId: string) => void;
+  onPianoKeyClick?: (noteId: string) => void;
 }
 
-export function PianoKeyboard({
-  activeNotes,
-  octaveShift,
-  onAttack,
-  onRelease,
-}: PianoKeyboardProps) {
-  const whites = PIANO_RANGE.filter((p) => !isBlack(p.noteName));
+/**
+ * A grid-based renderer for the piano. White keys are placed in the grid in
+ * order; each black key is rendered as an absolutely-positioned child of the
+ * white-key slot that immediately follows it (which keeps the offset correct
+ * regardless of view mode or width).
+ */
+export const PianoKeyboard = forwardRef<HTMLDivElement, PianoKeyboardProps>(
+  function PianoKeyboard(
+    {
+      range,
+      viewMode,
+      labelMode,
+      mappings,
+      octaveShift,
+      activeNotes,
+      editMode = false,
+      awaitingNote = null,
+      onAttack,
+      onRelease,
+      onPianoKeyClick,
+    },
+    ref,
+  ) {
+    const notes = useMemo(() => rangeNotes(range), [range]);
+    const showNote = labelMode === 'all' || labelMode === 'note';
+    const showKey = labelMode === 'all' || labelMode === 'key';
 
-  return (
-    <div className="piano" role="group" aria-label="On-screen piano keyboard">
-      {whites.map(({ noteName, octave }) => {
-        const noteId = `${noteName}${octave}`;
-        const sharpName = `${noteName}#`;
-        const sharpId = `${sharpName}${octave}`;
-        const hasSharp = noteName !== 'E' && noteName !== 'B';
+    // Walk in order; each white key owns the *previous* black key (if any),
+    // rendered as an absolutely-positioned child to its left.
+    const items: Array<{ white: string; precedingBlack: string | null }> = [];
+    let pendingBlack: string | null = null;
+    for (const id of notes) {
+      if (isBlack(id)) {
+        pendingBlack = id;
+        continue;
+      }
+      items.push({ white: id, precedingBlack: pendingBlack });
+      pendingBlack = null;
+    }
 
-        const whiteLabel = labelForPianoNote(noteId, octaveShift);
-        const blackLabel = hasSharp ? labelForPianoNote(sharpId, octaveShift) : undefined;
+    const handlePress = (noteId: string) => {
+      if (editMode) {
+        onPianoKeyClick?.(noteId);
+        return;
+      }
+      onAttack(noteId);
+    };
+    const handleRelease = (noteId: string) => {
+      if (editMode) return;
+      onRelease(noteId);
+    };
 
-        return (
-          <div key={noteId} className="key-slot">
-            <button
-              type="button"
-              className={`key white ${activeNotes.has(noteId) ? 'active' : ''}`}
-              onMouseDown={() => onAttack(noteId)}
-              onMouseUp={() => onRelease(noteId)}
-              onMouseLeave={() => activeNotes.has(noteId) && onRelease(noteId)}
-              aria-label={`Piano key ${noteId}`}
-              aria-pressed={activeNotes.has(noteId)}
-            >
-              <span className="key-note">{noteId}</span>
-              {whiteLabel && <span className="key-label">{whiteLabel}</span>}
-            </button>
+    return (
+      <div
+        ref={ref}
+        className={`piano-wrap view-${viewMode} ${editMode ? 'edit-mode' : ''}`}
+      >
+        <div className="piano">
+          {items.map(({ white, precedingBlack }, idx) => {
+            const whiteActive = activeNotes.has(white);
+            const whiteAwaiting = editMode && awaitingNote === white;
+            const blackActive = precedingBlack ? activeNotes.has(precedingBlack) : false;
+            const blackAwaiting = editMode && precedingBlack && awaitingNote === precedingBlack;
 
-            {hasSharp && (
-              <button
-                type="button"
-                className={`key black ${activeNotes.has(sharpId) ? 'active' : ''}`}
-                onMouseDown={(e) => { e.stopPropagation(); onAttack(sharpId); }}
-                onMouseUp={(e) => { e.stopPropagation(); onRelease(sharpId); }}
-                onMouseLeave={() => activeNotes.has(sharpId) && onRelease(sharpId)}
-                aria-label={`Piano key ${sharpId}`}
-                aria-pressed={activeNotes.has(sharpId)}
-              >
-                {blackLabel && <span className="key-label">{blackLabel}</span>}
-              </button>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+            const whiteLabel = labelForNote(white, octaveShift, mappings);
+            const blackLabel = precedingBlack
+              ? labelForNote(precedingBlack, octaveShift, mappings)
+              : undefined;
+
+            const isOctaveStart = white.startsWith('C') && !white.includes('#');
+
+            return (
+              <div key={white} className={`key-slot ${isOctaveStart && idx > 0 ? 'octave-start' : ''}`}>
+                {precedingBlack && (
+                  <button
+                    type="button"
+                    className={`key black ${blackActive ? 'active' : ''} ${blackAwaiting ? 'awaiting' : ''}`}
+                    onMouseDown={(e) => { e.stopPropagation(); handlePress(precedingBlack); }}
+                    onMouseUp={(e) => { e.stopPropagation(); handleRelease(precedingBlack); }}
+                    onMouseLeave={() => activeNotes.has(precedingBlack) && handleRelease(precedingBlack)}
+                    aria-label={`Piano key ${precedingBlack}`}
+                    aria-pressed={blackActive}
+                    title={precedingBlack}
+                  >
+                    {showKey && blackLabel && <span className="key-label">{blackLabel}</span>}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={`key white ${whiteActive ? 'active' : ''} ${whiteAwaiting ? 'awaiting' : ''}`}
+                  onMouseDown={() => handlePress(white)}
+                  onMouseUp={() => handleRelease(white)}
+                  onMouseLeave={() => whiteActive && handleRelease(white)}
+                  aria-label={`Piano key ${white}`}
+                  aria-pressed={whiteActive}
+                  title={white}
+                >
+                  {showNote && <span className="key-note">{white}</span>}
+                  {showKey && whiteLabel && <span className="key-label">{whiteLabel}</span>}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  },
+);
